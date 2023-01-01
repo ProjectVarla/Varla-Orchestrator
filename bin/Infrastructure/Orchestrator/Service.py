@@ -14,6 +14,7 @@ class Service(BaseModel):
     tmux_session: str
     runtime_environment: str
     service_executable: str
+    service_directory: str
     tmux_name: str
 
     @property
@@ -42,6 +43,7 @@ class Service(BaseModel):
         return not system(f'ps -x | grep "{self.run_command}" | grep -q -v "grep"')
 
     def up(self) -> None:
+        self.pane.send_keys(f"cd {self.service_directory}")
         self.pane.send_keys(self.run_command)
 
     def down(self) -> None:
