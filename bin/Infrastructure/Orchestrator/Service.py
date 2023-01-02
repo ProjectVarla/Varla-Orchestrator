@@ -1,5 +1,6 @@
 from os import system
 from time import sleep
+from typing import Optional
 
 from libtmux import Pane
 from libtmux import Server as Tmux
@@ -16,6 +17,13 @@ class Service(BaseModel):
     service_executable: str
     service_directory: str
     tmux_name: str
+    auto_run: bool = False
+
+    def __init__(self, **data) -> None:
+        super().__init__(**data)
+
+        if self.auto_run and not self.is_up:
+            self.up()
 
     @property
     def session(self) -> Session:
