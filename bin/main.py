@@ -63,7 +63,7 @@ def restart(service_name: str, response: Response) -> str:
         else:
             orchestrator[service_name].restart()
             response.status_code = status_code.HTTP_200_OK
-            return "Service is restarted!"
+            return "Service was restarted!"
 
     except KeyError:
         response.status_code = status_code.HTTP_404_NOT_FOUND
