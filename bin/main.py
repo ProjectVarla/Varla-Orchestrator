@@ -1,73 +1,76 @@
 import uvicorn
-from fastapi import FastAPI, Response, status as status_code
-from Infrastructure import Orchestrator
-from VarlaLib.Shell import varla_header
 from conf import settings
+from fastapi import FastAPI, Response
+from Infrastructure import Orchestrator
+from Models import ServicesFilter
+from VarlaLib.Shell import varla_header
 
 app = FastAPI(title="Varla-Orchestrator")
 orchestrator = Orchestrator()
 
 
-@app.get("/up/{service_name}")
-def up(service_name: str, response: Response) -> str:
-    try:
-        if orchestrator[service_name].is_up:
-            response.status_code = status_code.HTTP_208_ALREADY_REPORTED
-            return "Service is already up!"
-        else:
-            orchestrator[service_name].up()
-            response.status_code = status_code.HTTP_200_OK
-            return "Service is up!"
-
-    except KeyError:
-        response.status_code = status_code.HTTP_404_NOT_FOUND
-        return "Service was not found!"
-
-
-@app.get("/status/{service_name}")
+@app.post("/status/{service_name}")
 def status(service_name: str, response: Response) -> bool:
-    try:
-        return (
-            f"{service_name} is up!"
-            if orchestrator[service_name].is_up
-            else f"{service_name} is down!"
-        )
-    except KeyError:
-        response.status_code = status_code.HTTP_404_NOT_FOUND
-        return "Service was not found!"
+    return orchestrator.get_service_status(service_name, response)
 
 
-@app.get("/down/{service_name}")
+@app.post("/status")
+def status_list(services_filter: ServicesFilter) -> bool:
+    print(services_filter)
+    if services_filter.select_all:
+        return [
+            orchestrator.get_service_status(service.tmux_name)
+            for service in orchestrator
+        ]
+    else:
+        return [
+            orchestrator.get_service_status(service_name)
+            for service_name in services_filter
+        ]
+
+
+@app.post("/up/{service_name}")
+def up(service_name: str, response: Response) -> str:
+    return orchestrator.start_service(service_name, response)
+
+
+@app.post("/up")
+def up_list(services_filter: ServicesFilter) -> bool:
+    if services_filter.select_all:
+        return [
+            orchestrator.start_service(service.tmux_name) for service in orchestrator
+        ]
+    else:
+        return [
+            orchestrator.start_service(service_name) for service_name in services_filter
+        ]
+
+
+@app.post("/down/{service_name}")
 def down(service_name: str, response: Response) -> str:
-    try:
-        if not orchestrator[service_name].is_up:
-            response.status_code = status_code.HTTP_208_ALREADY_REPORTED
-            return "Service is already down!"
-        else:
-            orchestrator[service_name].down()
-            response.status_code = status_code.HTTP_200_OK
-            return "Service is down!"
-
-    except KeyError:
-        response.status_code = status_code.HTTP_404_NOT_FOUND
-        return "Service was not found!"
+    return orchestrator.stop_service(service_name, response)
 
 
-@app.get("/restart/{service_name}")
+@app.post("/down")
+def down_list(services_filter: ServicesFilter) -> bool:
+    return [orchestrator.stop_service(service_name) for service_name in services_filter]
+
+
+@app.post("/restart/{service_name}")
 def restart(service_name: str, response: Response) -> str:
-    try:
-        if not orchestrator[service_name].is_up:
-            response.status_code = status_code.HTTP_200_OK
-            orchestrator[service_name].up()
-            return "Service is already down, Starting Service!"
-        else:
-            orchestrator[service_name].restart()
-            response.status_code = status_code.HTTP_200_OK
-            return "Service was restarted!"
+    return orchestrator.restart_service(service_name, response)
 
-    except KeyError:
-        response.status_code = status_code.HTTP_404_NOT_FOUND
-        return "Service was not found!"
+
+@app.post("/restart")
+def restart_list(services_filter: ServicesFilter) -> bool:
+    return [
+        orchestrator.restart_service(service_name) for service_name in services_filter
+    ]
+
+
+@app.post("/list")
+def list() -> str:
+    return [service.tmux_name for service in orchestrator]
 
 
 if __name__ == "__main__":
